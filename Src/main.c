@@ -110,6 +110,7 @@ int main(void)
   MX_OPAMP2_Init();
   MX_ADC1_Init();
   /* USER CODE BEGIN 2 */
+  HAL_OPAMP_Start(&hopamp2);
   HAL_ADC_Start_DMA(&hadc1, (uint32_t*)audio_buffer, AUDIO_BUFFER_SIZE);
 
   printf("Hanim gelmeden evi supurem!\r\n");
