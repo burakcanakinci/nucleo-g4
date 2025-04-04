@@ -22,6 +22,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
+#include <stdbool.h>
 #include <stdio.h>
 
 /* USER CODE END Includes */
@@ -33,8 +34,13 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define AUDIO_BUFFER_SIZE 256
+#define AUDIO_BUFFER_SIZE 512
 uint32_t audio_buffer[AUDIO_BUFFER_SIZE];
+
+#define PRINT_CHUNK_SIZE 128
+uint16_t left_print_buf[PRINT_CHUNK_SIZE];
+uint16_t right_print_buf[PRINT_CHUNK_SIZE];
+volatile bool ready_to_print = false;
 
 /* USER CODE END PD */
 
@@ -81,7 +87,13 @@ int __io_putchar(int ch)
   return ch;
 }
 
-
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {
+  for (int i = 0; i < PRINT_CHUNK_SIZE; ++i) {
+    left_print_buf[i]  = audio_buffer[i] & 0xFFFF;
+    right_print_buf[i] = (audio_buffer[i] >> 16) & 0xFFFF;
+  }
+  ready_to_print = true;
+}
 /* USER CODE END 0 */
 
 /**
@@ -138,16 +150,26 @@ int main(void)
 
     static uint32_t print_timer = 0;
 
-      // for (int i = 0; i < AUDIO_BUFFER_SIZE; ++i) {
-        if (HAL_GetTick() - print_timer > 10) {
-          uint32_t left = audio_buffer[AUDIO_BUFFER_SIZE / 2] & 0xFFFF;
-          uint32_t right = (audio_buffer[AUDIO_BUFFER_SIZE / 2] >> 16) & 0xFFFF;
-          printf("%lu,%lu\n", left, right); // For Serial Plotter
-          // uint16_t left = audio_buffer[0] & 0xFFFF;          // ADC1 (left)
-          // uint16_t right = (audio_buffer[0] >> 16) & 0xFFFF; // ADC2 (right)
-          // printf("%d,%d\n", left, right);
-          print_timer = HAL_GetTick();
-        }
+    if (ready_to_print) {
+      for (int i = 0; i < PRINT_CHUNK_SIZE; ++i) {
+        printf("%u,%u\n", left_print_buf[i], right_print_buf[i]);
+        HAL_Delay(1);  // Optional: throttle to slow serial down for plotter
+      }
+      ready_to_print = false;
+    }
+      // if (HAL_GetTick() - print_timer > 10) {
+      //   // for (int i = 0; i < AUDIO_BUFFER_SIZE; ++i) {
+      //
+      //   uint16_t left = audio_buffer[AUDIO_BUFFER_SIZE / 2] & 0xFFFF;
+      //   uint16_t right = (audio_buffer[AUDIO_BUFFER_SIZE / 2] >> 16) & 0xFFFF;
+      //   printf("%u,%u\n", left, right); // For Serial Plotter
+      //
+      //   // uint16_t left = audio_buffer[i] & 0xFFFF;          // ADC1 (left)
+      //   // uint16_t right = (audio_buffer[i] >> 16) & 0xFFFF; // ADC2 (right)
+      //   // printf("%u,%u\n", left, right);
+      //
+      //   print_timer = HAL_GetTick();
+      //   // }
       // }
 
     /* USER CODE END WHILE */
