@@ -53,6 +53,8 @@ UART_HandleTypeDef hlpuart1;
 OPAMP_HandleTypeDef hopamp2;
 OPAMP_HandleTypeDef hopamp6;
 
+TIM_HandleTypeDef htim6;
+
 /* USER CODE BEGIN PV */
 
 /* USER CODE END PV */
@@ -63,9 +65,10 @@ static void MX_GPIO_Init(void);
 static void MX_DMA_Init(void);
 static void MX_LPUART1_UART_Init(void);
 static void MX_OPAMP2_Init(void);
-static void MX_OPAMP6_Init(void);
 static void MX_ADC1_Init(void);
 static void MX_ADC2_Init(void);
+static void MX_OPAMP6_Init(void);
+static void MX_TIM6_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -113,10 +116,13 @@ int main(void)
   MX_DMA_Init();
   MX_LPUART1_UART_Init();
   MX_OPAMP2_Init();
-  MX_ADC2_Init();
   MX_ADC1_Init();
+  MX_ADC2_Init();
   MX_OPAMP6_Init();
+  MX_TIM6_Init();
   /* USER CODE BEGIN 2 */
+  HAL_TIM_Base_Start(&htim6);
+
   HAL_OPAMP_Start(&hopamp2);
   HAL_OPAMP_Start(&hopamp6);
 
@@ -128,24 +134,21 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  while (1)
-  {
+  while (1) {
+
     static uint32_t print_timer = 0;
 
-    if (HAL_GetTick() - print_timer > 300)
-    {
-      for (int i = 0; i < AUDIO_BUFFER_SIZE; ++i) {
-        uint16_t left = audio_buffer[i] & 0xFFFF;
-        uint16_t right = (audio_buffer[i] >> 16) & 0xFFFF;
-        // printf("%d,%d\n", left, right);  // For Serial Plotter
-      }
-      // uint16_t left = audio_buffer[0] & 0xFFFF;          // ADC1 (left)
-      // uint16_t right = (audio_buffer[0] >> 16) & 0xFFFF; // ADC2 (right)
-      // printf("%d,%d\n", left, right);
-      print_timer = HAL_GetTick();
-    }
-    // HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
-    // HAL_Delay(1000);
+      // for (int i = 0; i < AUDIO_BUFFER_SIZE; ++i) {
+        if (HAL_GetTick() - print_timer > 10) {
+          uint32_t left = audio_buffer[AUDIO_BUFFER_SIZE / 2] & 0xFFFF;
+          uint32_t right = (audio_buffer[AUDIO_BUFFER_SIZE / 2] >> 16) & 0xFFFF;
+          printf("%lu,%lu\n", left, right); // For Serial Plotter
+          // uint16_t left = audio_buffer[0] & 0xFFFF;          // ADC1 (left)
+          // uint16_t right = (audio_buffer[0] >> 16) & 0xFFFF; // ADC2 (right)
+          // printf("%d,%d\n", left, right);
+          print_timer = HAL_GetTick();
+        }
+      // }
 
     /* USER CODE END WHILE */
 
@@ -232,8 +235,8 @@ static void MX_ADC1_Init(void)
   hadc1.Init.ContinuousConvMode = ENABLE;
   hadc1.Init.NbrOfConversion = 1;
   hadc1.Init.DiscontinuousConvMode = DISABLE;
-  hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
-  hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
+  hadc1.Init.ExternalTrigConv = ADC_EXTERNALTRIG_T6_TRGO;
+  hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_RISING;
   hadc1.Init.DMAContinuousRequests = ENABLE;
   hadc1.Init.Overrun = ADC_OVR_DATA_PRESERVED;
   hadc1.Init.OversamplingMode = DISABLE;
@@ -435,6 +438,44 @@ static void MX_OPAMP6_Init(void)
   /* USER CODE BEGIN OPAMP6_Init 2 */
 
   /* USER CODE END OPAMP6_Init 2 */
+
+}
+
+/**
+  * @brief TIM6 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM6_Init(void)
+{
+
+  /* USER CODE BEGIN TIM6_Init 0 */
+
+  /* USER CODE END TIM6_Init 0 */
+
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM6_Init 1 */
+
+  /* USER CODE END TIM6_Init 1 */
+  htim6.Instance = TIM6;
+  htim6.Init.Prescaler = 1;
+  htim6.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim6.Init.Period = 1926;
+  htim6.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim6) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_UPDATE;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim6, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM6_Init 2 */
+
+  /* USER CODE END TIM6_Init 2 */
 
 }
 
