@@ -34,7 +34,8 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 #define AUDIO_BUFFER_SIZE 256
-uint16_t audio_buffer[AUDIO_BUFFER_SIZE];
+uint32_t audio_buffer[AUDIO_BUFFER_SIZE];
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -44,11 +45,13 @@ uint16_t audio_buffer[AUDIO_BUFFER_SIZE];
 
 /* Private variables ---------------------------------------------------------*/
 ADC_HandleTypeDef hadc1;
+ADC_HandleTypeDef hadc2;
 DMA_HandleTypeDef hdma_adc1;
 
 UART_HandleTypeDef hlpuart1;
 
 OPAMP_HandleTypeDef hopamp2;
+OPAMP_HandleTypeDef hopamp6;
 
 /* USER CODE BEGIN PV */
 
@@ -60,7 +63,9 @@ static void MX_GPIO_Init(void);
 static void MX_DMA_Init(void);
 static void MX_LPUART1_UART_Init(void);
 static void MX_OPAMP2_Init(void);
+static void MX_OPAMP6_Init(void);
 static void MX_ADC1_Init(void);
+static void MX_ADC2_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -108,12 +113,17 @@ int main(void)
   MX_DMA_Init();
   MX_LPUART1_UART_Init();
   MX_OPAMP2_Init();
+  MX_ADC2_Init();
   MX_ADC1_Init();
+  MX_OPAMP6_Init();
   /* USER CODE BEGIN 2 */
   HAL_OPAMP_Start(&hopamp2);
-  HAL_ADC_Start_DMA(&hadc1, (uint32_t*)audio_buffer, AUDIO_BUFFER_SIZE);
+  HAL_OPAMP_Start(&hopamp6);
 
-  printf("Hanim gelmeden evi supurem!\r\n");
+  HAL_ADC_Start(&hadc2);
+  HAL_ADCEx_MultiModeStart_DMA(&hadc1, audio_buffer, AUDIO_BUFFER_SIZE);
+  // HAL_ADC_Start_DMA(&hadc1, audio_buffer, AUDIO_BUFFER_SIZE);
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -122,9 +132,16 @@ int main(void)
   {
     static uint32_t print_timer = 0;
 
-    if (HAL_GetTick() - print_timer > 1000)
+    if (HAL_GetTick() - print_timer > 300)
     {
-      printf("ADC Sample[0]: %d  |  [128]: %d\r\n", audio_buffer[0], audio_buffer[128]);
+      for (int i = 0; i < AUDIO_BUFFER_SIZE; ++i) {
+        uint16_t left = audio_buffer[i] & 0xFFFF;
+        uint16_t right = (audio_buffer[i] >> 16) & 0xFFFF;
+        // printf("%d,%d\n", left, right);  // For Serial Plotter
+      }
+      // uint16_t left = audio_buffer[0] & 0xFFFF;          // ADC1 (left)
+      // uint16_t right = (audio_buffer[0] >> 16) & 0xFFFF; // ADC2 (right)
+      // printf("%d,%d\n", left, right);
       print_timer = HAL_GetTick();
     }
     // HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
@@ -227,7 +244,9 @@ static void MX_ADC1_Init(void)
 
   /** Configure the ADC multi-mode
   */
-  multimode.Mode = ADC_MODE_INDEPENDENT;
+  multimode.Mode = ADC_DUALMODE_REGSIMULT;
+  multimode.DMAAccessMode = ADC_DMAACCESSMODE_12_10_BITS;
+  multimode.TwoSamplingDelay = ADC_TWOSAMPLINGDELAY_1CYCLE;
   if (HAL_ADCEx_MultiModeConfigChannel(&hadc1, &multimode) != HAL_OK)
   {
     Error_Handler();
@@ -248,6 +267,63 @@ static void MX_ADC1_Init(void)
   /* USER CODE BEGIN ADC1_Init 2 */
 
   /* USER CODE END ADC1_Init 2 */
+
+}
+
+/**
+  * @brief ADC2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_ADC2_Init(void)
+{
+
+  /* USER CODE BEGIN ADC2_Init 0 */
+
+  /* USER CODE END ADC2_Init 0 */
+
+  ADC_ChannelConfTypeDef sConfig = {0};
+
+  /* USER CODE BEGIN ADC2_Init 1 */
+
+  /* USER CODE END ADC2_Init 1 */
+
+  /** Common config
+  */
+  hadc2.Instance = ADC2;
+  hadc2.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV4;
+  hadc2.Init.Resolution = ADC_RESOLUTION_12B;
+  hadc2.Init.DataAlign = ADC_DATAALIGN_RIGHT;
+  hadc2.Init.GainCompensation = 0;
+  hadc2.Init.ScanConvMode = ADC_SCAN_DISABLE;
+  hadc2.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
+  hadc2.Init.LowPowerAutoWait = DISABLE;
+  hadc2.Init.ContinuousConvMode = ENABLE;
+  hadc2.Init.NbrOfConversion = 1;
+  hadc2.Init.DiscontinuousConvMode = DISABLE;
+  hadc2.Init.DMAContinuousRequests = DISABLE;
+  hadc2.Init.Overrun = ADC_OVR_DATA_PRESERVED;
+  hadc2.Init.OversamplingMode = DISABLE;
+  if (HAL_ADC_Init(&hadc2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** Configure Regular Channel
+  */
+  sConfig.Channel = ADC_CHANNEL_2;
+  sConfig.Rank = ADC_REGULAR_RANK_1;
+  sConfig.SamplingTime = ADC_SAMPLETIME_2CYCLES_5;
+  sConfig.SingleDiff = ADC_SINGLE_ENDED;
+  sConfig.OffsetNumber = ADC_OFFSET_NONE;
+  sConfig.Offset = 0;
+  if (HAL_ADC_ConfigChannel(&hadc2, &sConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN ADC2_Init 2 */
+
+  /* USER CODE END ADC2_Init 2 */
 
 }
 
@@ -327,6 +403,38 @@ static void MX_OPAMP2_Init(void)
   /* USER CODE BEGIN OPAMP2_Init 2 */
 
   /* USER CODE END OPAMP2_Init 2 */
+
+}
+
+/**
+  * @brief OPAMP6 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_OPAMP6_Init(void)
+{
+
+  /* USER CODE BEGIN OPAMP6_Init 0 */
+
+  /* USER CODE END OPAMP6_Init 0 */
+
+  /* USER CODE BEGIN OPAMP6_Init 1 */
+
+  /* USER CODE END OPAMP6_Init 1 */
+  hopamp6.Instance = OPAMP6;
+  hopamp6.Init.PowerMode = OPAMP_POWERMODE_NORMALSPEED;
+  hopamp6.Init.Mode = OPAMP_FOLLOWER_MODE;
+  hopamp6.Init.NonInvertingInput = OPAMP_NONINVERTINGINPUT_IO0;
+  hopamp6.Init.InternalOutput = DISABLE;
+  hopamp6.Init.TimerControlledMuxmode = OPAMP_TIMERCONTROLLEDMUXMODE_DISABLE;
+  hopamp6.Init.UserTrimming = OPAMP_TRIMMING_FACTORY;
+  if (HAL_OPAMP_Init(&hopamp6) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN OPAMP6_Init 2 */
+
+  /* USER CODE END OPAMP6_Init 2 */
 
 }
 
