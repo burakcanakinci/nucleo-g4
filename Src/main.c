@@ -22,6 +22,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
+#include <math.h>
 #include <stdbool.h>
 #include <stdio.h>
 
@@ -34,13 +35,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define AUDIO_BUFFER_SIZE 512
-uint32_t audio_buffer[AUDIO_BUFFER_SIZE];
-
-#define PRINT_CHUNK_SIZE 128
-uint16_t left_print_buf[PRINT_CHUNK_SIZE];
-uint16_t right_print_buf[PRINT_CHUNK_SIZE];
-volatile bool ready_to_print = false;
+#define AUDIO_BUFFER_SIZE 256
 
 /* USER CODE END PD */
 
@@ -54,6 +49,9 @@ ADC_HandleTypeDef hadc1;
 ADC_HandleTypeDef hadc2;
 DMA_HandleTypeDef hdma_adc1;
 
+DAC_HandleTypeDef hdac1;
+DMA_HandleTypeDef hdma_dac1_ch1;
+
 UART_HandleTypeDef hlpuart1;
 
 OPAMP_HandleTypeDef hopamp2;
@@ -62,7 +60,10 @@ OPAMP_HandleTypeDef hopamp6;
 TIM_HandleTypeDef htim6;
 
 /* USER CODE BEGIN PV */
+uint32_t adc_buffer[AUDIO_BUFFER_SIZE];
+uint32_t dac_buffer[AUDIO_BUFFER_SIZE];
 
+// bool ready_to_print = false;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -75,25 +76,14 @@ static void MX_ADC1_Init(void);
 static void MX_ADC2_Init(void);
 static void MX_OPAMP6_Init(void);
 static void MX_TIM6_Init(void);
+static void MX_DAC1_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-int __io_putchar(int ch)
-{
-  HAL_UART_Transmit(&hlpuart1, (uint8_t *)&ch, 1, HAL_MAX_DELAY);
-  return ch;
-}
 
-void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {
-  for (int i = 0; i < PRINT_CHUNK_SIZE; ++i) {
-    left_print_buf[i]  = audio_buffer[i] & 0xFFFF;
-    right_print_buf[i] = (audio_buffer[i] >> 16) & 0xFFFF;
-  }
-  ready_to_print = true;
-}
 /* USER CODE END 0 */
 
 /**
@@ -132,44 +122,28 @@ int main(void)
   MX_ADC2_Init();
   MX_OPAMP6_Init();
   MX_TIM6_Init();
+  MX_DAC1_Init();
   /* USER CODE BEGIN 2 */
-  HAL_TIM_Base_Start(&htim6);
-
   HAL_OPAMP_Start(&hopamp2);
   HAL_OPAMP_Start(&hopamp6);
 
   HAL_ADC_Start(&hadc2);
-  HAL_ADCEx_MultiModeStart_DMA(&hadc1, audio_buffer, AUDIO_BUFFER_SIZE);
+  HAL_ADCEx_MultiModeStart_DMA(&hadc1, adc_buffer, AUDIO_BUFFER_SIZE);
   // HAL_ADC_Start_DMA(&hadc1, audio_buffer, AUDIO_BUFFER_SIZE);
+  // HAL_DAC_Start(&hdac1,DAC_CHANNEL_1);
+  HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, (uint32_t *)dac_buffer, AUDIO_BUFFER_SIZE, DAC_ALIGN_12B_R);
 
+  HAL_TIM_Base_Start(&htim6);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1) {
 
-    static uint32_t print_timer = 0;
-
-    if (ready_to_print) {
-      for (int i = 0; i < PRINT_CHUNK_SIZE; ++i) {
-        printf("%u,%u\n", left_print_buf[i], right_print_buf[i]);
-        HAL_Delay(1);  // Optional: throttle to slow serial down for plotter
-      }
-      ready_to_print = false;
-    }
-      // if (HAL_GetTick() - print_timer > 10) {
-      //   // for (int i = 0; i < AUDIO_BUFFER_SIZE; ++i) {
-      //
-      //   uint16_t left = audio_buffer[AUDIO_BUFFER_SIZE / 2] & 0xFFFF;
-      //   uint16_t right = (audio_buffer[AUDIO_BUFFER_SIZE / 2] >> 16) & 0xFFFF;
-      //   printf("%u,%u\n", left, right); // For Serial Plotter
-      //
-      //   // uint16_t left = audio_buffer[i] & 0xFFFF;          // ADC1 (left)
-      //   // uint16_t right = (audio_buffer[i] >> 16) & 0xFFFF; // ADC2 (right)
-      //   // printf("%u,%u\n", left, right);
-      //
-      //   print_timer = HAL_GetTick();
-      //   // }
+      // for (int i = 0; i < AUDIO_BUFFER_SIZE; ++i) {
+      //   printf("%u,%u\n", adc_buffer[i], dac_buffer[i]);
+      //   fflush(stdout);
+      //   // HAL_Delay(1);
       // }
 
     /* USER CODE END WHILE */
@@ -254,7 +228,7 @@ static void MX_ADC1_Init(void)
   hadc1.Init.ScanConvMode = ADC_SCAN_DISABLE;
   hadc1.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
   hadc1.Init.LowPowerAutoWait = DISABLE;
-  hadc1.Init.ContinuousConvMode = ENABLE;
+  hadc1.Init.ContinuousConvMode = DISABLE;
   hadc1.Init.NbrOfConversion = 1;
   hadc1.Init.DiscontinuousConvMode = DISABLE;
   hadc1.Init.ExternalTrigConv = ADC_EXTERNALTRIG_T6_TRGO;
@@ -323,7 +297,7 @@ static void MX_ADC2_Init(void)
   hadc2.Init.ScanConvMode = ADC_SCAN_DISABLE;
   hadc2.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
   hadc2.Init.LowPowerAutoWait = DISABLE;
-  hadc2.Init.ContinuousConvMode = ENABLE;
+  hadc2.Init.ContinuousConvMode = DISABLE;
   hadc2.Init.NbrOfConversion = 1;
   hadc2.Init.DiscontinuousConvMode = DISABLE;
   hadc2.Init.DMAContinuousRequests = DISABLE;
@@ -353,6 +327,53 @@ static void MX_ADC2_Init(void)
 }
 
 /**
+  * @brief DAC1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_DAC1_Init(void)
+{
+
+  /* USER CODE BEGIN DAC1_Init 0 */
+
+  /* USER CODE END DAC1_Init 0 */
+
+  DAC_ChannelConfTypeDef sConfig = {0};
+
+  /* USER CODE BEGIN DAC1_Init 1 */
+
+  /* USER CODE END DAC1_Init 1 */
+
+  /** DAC Initialization
+  */
+  hdac1.Instance = DAC1;
+  if (HAL_DAC_Init(&hdac1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** DAC channel OUT1 config
+  */
+  sConfig.DAC_HighFrequency = DAC_HIGH_FREQUENCY_INTERFACE_MODE_AUTOMATIC;
+  sConfig.DAC_DMADoubleDataMode = DISABLE;
+  sConfig.DAC_SignedFormat = DISABLE;
+  sConfig.DAC_SampleAndHold = DAC_SAMPLEANDHOLD_DISABLE;
+  sConfig.DAC_Trigger = DAC_TRIGGER_T6_TRGO;
+  sConfig.DAC_Trigger2 = DAC_TRIGGER_NONE;
+  sConfig.DAC_OutputBuffer = DAC_OUTPUTBUFFER_ENABLE;
+  sConfig.DAC_ConnectOnChipPeripheral = DAC_CHIPCONNECT_EXTERNAL;
+  sConfig.DAC_UserTrimming = DAC_TRIMMING_FACTORY;
+  if (HAL_DAC_ConfigChannel(&hdac1, &sConfig, DAC_CHANNEL_1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN DAC1_Init 2 */
+
+  /* USER CODE END DAC1_Init 2 */
+
+}
+
+/**
   * @brief LPUART1 Initialization Function
   * @param None
   * @retval None
@@ -368,7 +389,7 @@ static void MX_LPUART1_UART_Init(void)
 
   /* USER CODE END LPUART1_Init 1 */
   hlpuart1.Instance = LPUART1;
-  hlpuart1.Init.BaudRate = 230400;
+  hlpuart1.Init.BaudRate = 500000;
   hlpuart1.Init.WordLength = UART_WORDLENGTH_8B;
   hlpuart1.Init.StopBits = UART_STOPBITS_1;
   hlpuart1.Init.Parity = UART_PARITY_NONE;
@@ -481,9 +502,9 @@ static void MX_TIM6_Init(void)
 
   /* USER CODE END TIM6_Init 1 */
   htim6.Instance = TIM6;
-  htim6.Init.Prescaler = 1;
+  htim6.Init.Prescaler = 0;
   htim6.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim6.Init.Period = 1926;
+  htim6.Init.Period = 3854;
   htim6.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim6) != HAL_OK)
   {
@@ -515,6 +536,9 @@ static void MX_DMA_Init(void)
   /* DMA1_Channel1_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
+  /* DMA1_Channel2_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Channel2_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Channel2_IRQn);
 
 }
 
@@ -550,6 +574,30 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+
+int __io_putchar(int ch)
+{
+  HAL_UART_Transmit(&hlpuart1, (uint8_t *)&ch, 1, HAL_MAX_DELAY);
+  return ch;
+}
+
+void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef* hadc) {
+  for (int i = 0; i < AUDIO_BUFFER_SIZE / 2; i++) {
+    // dac_buffer[i] = adc_buffer[i] / 2 + 931;
+    // dac_buffer[i] = adc_buffer[i] / 2;
+    // dac_buffer[i] = adc_buffer[i] + 931;
+    dac_buffer[i] = adc_buffer[i];
+  }
+}
+
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {
+  for (int i = AUDIO_BUFFER_SIZE / 2; i < AUDIO_BUFFER_SIZE; i++) {
+    // dac_buffer[i] = adc_buffer[i] / 2 + 931;
+    // dac_buffer[i] = adc_buffer[i] / 2;
+    // dac_buffer[i] = adc_buffer[i] + 931;
+    dac_buffer[i] = adc_buffer[i];
+  }
+}
 
 /* USER CODE END 4 */
 
