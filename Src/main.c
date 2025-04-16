@@ -23,7 +23,6 @@
 /* USER CODE BEGIN Includes */
 
 #include <math.h>
-#include <stdbool.h>
 #include <stdio.h>
 
 /* USER CODE END Includes */
@@ -36,7 +35,6 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 #define AUDIO_BUFFER_SIZE 256
-
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -52,9 +50,8 @@ DMA_HandleTypeDef hdma_adc1;
 DAC_HandleTypeDef hdac1;
 DMA_HandleTypeDef hdma_dac1_ch1;
 
-UART_HandleTypeDef hlpuart1;
-
 OPAMP_HandleTypeDef hopamp2;
+OPAMP_HandleTypeDef hopamp3;
 OPAMP_HandleTypeDef hopamp6;
 
 TIM_HandleTypeDef htim6;
@@ -70,13 +67,13 @@ uint32_t dac_buffer[AUDIO_BUFFER_SIZE];
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_DMA_Init(void);
-static void MX_LPUART1_UART_Init(void);
 static void MX_OPAMP2_Init(void);
-static void MX_ADC1_Init(void);
 static void MX_ADC2_Init(void);
-static void MX_OPAMP6_Init(void);
 static void MX_TIM6_Init(void);
 static void MX_DAC1_Init(void);
+static void MX_OPAMP3_Init(void);
+static void MX_ADC1_Init(void);
+static void MX_OPAMP6_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -116,24 +113,26 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_DMA_Init();
-  MX_LPUART1_UART_Init();
   MX_OPAMP2_Init();
-  MX_ADC1_Init();
   MX_ADC2_Init();
-  MX_OPAMP6_Init();
   MX_TIM6_Init();
   MX_DAC1_Init();
+  MX_OPAMP3_Init();
+  MX_ADC1_Init();
+  MX_OPAMP6_Init();
   /* USER CODE BEGIN 2 */
+  // HAL_OPAMP_Start(&hopamp1);
   HAL_OPAMP_Start(&hopamp2);
   HAL_OPAMP_Start(&hopamp6);
+  HAL_OPAMP_Start(&hopamp3);
 
   HAL_ADC_Start(&hadc2);
   HAL_ADCEx_MultiModeStart_DMA(&hadc1, adc_buffer, AUDIO_BUFFER_SIZE);
-  // HAL_ADC_Start_DMA(&hadc1, audio_buffer, AUDIO_BUFFER_SIZE);
-  // HAL_DAC_Start(&hdac1,DAC_CHANNEL_1);
+
   HAL_DAC_Start_DMA(&hdac1, DAC_CHANNEL_1, (uint32_t *)dac_buffer, AUDIO_BUFFER_SIZE, DAC_ALIGN_12B_R);
 
   HAL_TIM_Base_Start(&htim6);
+  
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -374,53 +373,6 @@ static void MX_DAC1_Init(void)
 }
 
 /**
-  * @brief LPUART1 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_LPUART1_UART_Init(void)
-{
-
-  /* USER CODE BEGIN LPUART1_Init 0 */
-
-  /* USER CODE END LPUART1_Init 0 */
-
-  /* USER CODE BEGIN LPUART1_Init 1 */
-
-  /* USER CODE END LPUART1_Init 1 */
-  hlpuart1.Instance = LPUART1;
-  hlpuart1.Init.BaudRate = 500000;
-  hlpuart1.Init.WordLength = UART_WORDLENGTH_8B;
-  hlpuart1.Init.StopBits = UART_STOPBITS_1;
-  hlpuart1.Init.Parity = UART_PARITY_NONE;
-  hlpuart1.Init.Mode = UART_MODE_TX_RX;
-  hlpuart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
-  hlpuart1.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
-  hlpuart1.Init.ClockPrescaler = UART_PRESCALER_DIV1;
-  hlpuart1.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
-  if (HAL_UART_Init(&hlpuart1) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  if (HAL_UARTEx_SetTxFifoThreshold(&hlpuart1, UART_TXFIFO_THRESHOLD_1_8) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  if (HAL_UARTEx_SetRxFifoThreshold(&hlpuart1, UART_RXFIFO_THRESHOLD_1_8) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  if (HAL_UARTEx_DisableFifoMode(&hlpuart1) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN LPUART1_Init 2 */
-
-  /* USER CODE END LPUART1_Init 2 */
-
-}
-
-/**
   * @brief OPAMP2 Initialization Function
   * @param None
   * @retval None
@@ -449,6 +401,38 @@ static void MX_OPAMP2_Init(void)
   /* USER CODE BEGIN OPAMP2_Init 2 */
 
   /* USER CODE END OPAMP2_Init 2 */
+
+}
+
+/**
+  * @brief OPAMP3 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_OPAMP3_Init(void)
+{
+
+  /* USER CODE BEGIN OPAMP3_Init 0 */
+
+  /* USER CODE END OPAMP3_Init 0 */
+
+  /* USER CODE BEGIN OPAMP3_Init 1 */
+
+  /* USER CODE END OPAMP3_Init 1 */
+  hopamp3.Instance = OPAMP3;
+  hopamp3.Init.PowerMode = OPAMP_POWERMODE_NORMALSPEED;
+  hopamp3.Init.Mode = OPAMP_FOLLOWER_MODE;
+  hopamp3.Init.NonInvertingInput = OPAMP_NONINVERTINGINPUT_IO0;
+  hopamp3.Init.InternalOutput = DISABLE;
+  hopamp3.Init.TimerControlledMuxmode = OPAMP_TIMERCONTROLLEDMUXMODE_DISABLE;
+  hopamp3.Init.UserTrimming = OPAMP_TRIMMING_FACTORY;
+  if (HAL_OPAMP_Init(&hopamp3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN OPAMP3_Init 2 */
+
+  /* USER CODE END OPAMP3_Init 2 */
 
 }
 
@@ -575,26 +559,34 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 4 */
 
-int __io_putchar(int ch)
-{
-  HAL_UART_Transmit(&hlpuart1, (uint8_t *)&ch, 1, HAL_MAX_DELAY);
-  return ch;
-}
-
+// int __io_putchar(int ch)
+// {
+//   HAL_UART_Transmit(&hlpuart1, (uint8_t *)&ch, 1, HAL_MAX_DELAY);
+//   return ch;
+// }
+//
 void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef* hadc) {
+
+  HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+
   for (int i = 0; i < AUDIO_BUFFER_SIZE / 2; i++) {
     // dac_buffer[i] = adc_buffer[i] / 2 + 931;
     // dac_buffer[i] = adc_buffer[i] / 2;
     // dac_buffer[i] = adc_buffer[i] + 931;
+    // dac_buffer[i] = adc_buffer[i] >> 1;
+    // dac_buffer[i] = adc_buffer[i] + 931 >> 1;
     dac_buffer[i] = adc_buffer[i];
   }
 }
 
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {
+
   for (int i = AUDIO_BUFFER_SIZE / 2; i < AUDIO_BUFFER_SIZE; i++) {
     // dac_buffer[i] = adc_buffer[i] / 2 + 931;
     // dac_buffer[i] = adc_buffer[i] / 2;
     // dac_buffer[i] = adc_buffer[i] + 931;
+    // dac_buffer[i] = adc_buffer[i] >> 1;
+    // dac_buffer[i] = adc_buffer[i] + 931 >> 1;
     dac_buffer[i] = adc_buffer[i];
   }
 }

@@ -321,83 +321,6 @@ void HAL_DAC_MspDeInit(DAC_HandleTypeDef* hdac)
 }
 
 /**
-  * @brief UART MSP Initialization
-  * This function configures the hardware resources used in this example
-  * @param huart: UART handle pointer
-  * @retval None
-  */
-void HAL_UART_MspInit(UART_HandleTypeDef* huart)
-{
-  GPIO_InitTypeDef GPIO_InitStruct = {0};
-  RCC_PeriphCLKInitTypeDef PeriphClkInit = {0};
-  if(huart->Instance==LPUART1)
-  {
-    /* USER CODE BEGIN LPUART1_MspInit 0 */
-
-    /* USER CODE END LPUART1_MspInit 0 */
-
-  /** Initializes the peripherals clocks
-  */
-    PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_LPUART1;
-    PeriphClkInit.Lpuart1ClockSelection = RCC_LPUART1CLKSOURCE_PCLK1;
-    if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
-    {
-      Error_Handler();
-    }
-
-    /* Peripheral clock enable */
-    __HAL_RCC_LPUART1_CLK_ENABLE();
-
-    __HAL_RCC_GPIOA_CLK_ENABLE();
-    /**LPUART1 GPIO Configuration
-    PA2     ------> LPUART1_TX
-    PA3     ------> LPUART1_RX
-    */
-    GPIO_InitStruct.Pin = LPUART1_TX_Pin|LPUART1_RX_Pin;
-    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
-    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-    GPIO_InitStruct.Alternate = GPIO_AF12_LPUART1;
-    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
-    /* USER CODE BEGIN LPUART1_MspInit 1 */
-
-    /* USER CODE END LPUART1_MspInit 1 */
-
-  }
-
-}
-
-/**
-  * @brief UART MSP De-Initialization
-  * This function freeze the hardware resources used in this example
-  * @param huart: UART handle pointer
-  * @retval None
-  */
-void HAL_UART_MspDeInit(UART_HandleTypeDef* huart)
-{
-  if(huart->Instance==LPUART1)
-  {
-    /* USER CODE BEGIN LPUART1_MspDeInit 0 */
-
-    /* USER CODE END LPUART1_MspDeInit 0 */
-    /* Peripheral clock disable */
-    __HAL_RCC_LPUART1_CLK_DISABLE();
-
-    /**LPUART1 GPIO Configuration
-    PA2     ------> LPUART1_TX
-    PA3     ------> LPUART1_RX
-    */
-    HAL_GPIO_DeInit(GPIOA, LPUART1_TX_Pin|LPUART1_RX_Pin);
-
-    /* USER CODE BEGIN LPUART1_MspDeInit 1 */
-
-    /* USER CODE END LPUART1_MspDeInit 1 */
-  }
-
-}
-
-/**
   * @brief OPAMP MSP Initialization
   * This function configures the hardware resources used in this example
   * @param hopamp: OPAMP handle pointer
@@ -425,6 +348,26 @@ void HAL_OPAMP_MspInit(OPAMP_HandleTypeDef* hopamp)
     /* USER CODE BEGIN OPAMP2_MspInit 1 */
 
     /* USER CODE END OPAMP2_MspInit 1 */
+  }
+  else if(hopamp->Instance==OPAMP3)
+  {
+    /* USER CODE BEGIN OPAMP3_MspInit 0 */
+
+    /* USER CODE END OPAMP3_MspInit 0 */
+
+    __HAL_RCC_GPIOB_CLK_ENABLE();
+    /**OPAMP3 GPIO Configuration
+    PB0     ------> OPAMP3_VINP
+    PB1     ------> OPAMP3_VOUT
+    */
+    GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1;
+    GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+    /* USER CODE BEGIN OPAMP3_MspInit 1 */
+
+    /* USER CODE END OPAMP3_MspInit 1 */
   }
   else if(hopamp->Instance==OPAMP6)
   {
@@ -472,6 +415,22 @@ void HAL_OPAMP_MspDeInit(OPAMP_HandleTypeDef* hopamp)
     /* USER CODE BEGIN OPAMP2_MspDeInit 1 */
 
     /* USER CODE END OPAMP2_MspDeInit 1 */
+  }
+  else if(hopamp->Instance==OPAMP3)
+  {
+    /* USER CODE BEGIN OPAMP3_MspDeInit 0 */
+
+    /* USER CODE END OPAMP3_MspDeInit 0 */
+
+    /**OPAMP3 GPIO Configuration
+    PB0     ------> OPAMP3_VINP
+    PB1     ------> OPAMP3_VOUT
+    */
+    HAL_GPIO_DeInit(GPIOB, GPIO_PIN_0|GPIO_PIN_1);
+
+    /* USER CODE BEGIN OPAMP3_MspDeInit 1 */
+
+    /* USER CODE END OPAMP3_MspDeInit 1 */
   }
   else if(hopamp->Instance==OPAMP6)
   {
