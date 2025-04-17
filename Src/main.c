@@ -24,6 +24,7 @@
 
 #include <math.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 /* USER CODE END Includes */
 
@@ -87,6 +88,9 @@ static void MX_TIM7_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+float map_knob_to_gain(uint16_t adc_val) {
+  return 0.0f + (adc_val / 4095.0f) * 2.0f; // Maps 0–4095 to 0.0x–2.0x gain
+}
 
 /* USER CODE END 0 */
 
@@ -146,12 +150,50 @@ int main(void)
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1) {
-
     static uint32_t pot_timer = 0;
+
+#define THRESHOLD 10
+
+    static uint32_t prev_low = 0, prev_mid = 0, prev_high = 0;
+
     if (HAL_GetTick() - pot_timer > 500) {
-      printf("L:%u M:%u H:%u\r\n", pot_dma_buffer[0], pot_dma_buffer[1], pot_dma_buffer[2]);
+      uint32_t avg_low = 0, avg_mid = 0, avg_high = 0;
+      for (int i = 0; i < 10; ++i) {
+        avg_low += pot_dma_buffer[0];
+        avg_mid += pot_dma_buffer[1];
+        avg_high += pot_dma_buffer[2];
+        HAL_Delay(1);
+      }
+
+      avg_low /= 10;
+      avg_mid /= 10;
+      avg_high /= 10;
+
+      if (abs((int)(avg_low - prev_low)) > THRESHOLD ||
+          abs((int)(avg_mid - prev_mid)) > THRESHOLD ||
+          abs((int)(avg_high - prev_high)) > THRESHOLD) {
+
+        float low = map_knob_to_gain(avg_low);
+        float mid =  map_knob_to_gain(avg_mid);
+        float high =  map_knob_to_gain(avg_high);
+
+        printf("L:%.2f M:%.2f H:%.2f\r\n", low, mid, high);
+
+        prev_low = avg_low;
+        prev_mid = avg_mid;
+        prev_high = avg_high;
+          }
+
       pot_timer = HAL_GetTick();
     }
+
+
+
+    // static uint32_t pot_timer = 0;
+    // if (HAL_GetTick() - pot_timer > 500) {
+    //   printf("L:%u M:%u H:%u\r\n", pot_dma_buffer[0], pot_dma_buffer[1], pot_dma_buffer[2]);
+    //   pot_timer = HAL_GetTick();
+    // }
 
 
   // for (int i = 0; i < AUDIO_BUFFER_SIZE; ++i) {
@@ -309,10 +351,9 @@ static void MX_ADC2_Init(void)
   hadc2.Init.ScanConvMode = ADC_SCAN_ENABLE;
   hadc2.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
   hadc2.Init.LowPowerAutoWait = DISABLE;
-  hadc2.Init.ContinuousConvMode = DISABLE;
+  hadc2.Init.ContinuousConvMode = ENABLE;
   hadc2.Init.NbrOfConversion = 3;
-  hadc2.Init.DiscontinuousConvMode = ENABLE;
-  hadc2.Init.NbrOfDiscConversion = 1;
+  hadc2.Init.DiscontinuousConvMode = DISABLE;
   hadc2.Init.ExternalTrigConv = ADC_EXTERNALTRIG_T7_TRGO;
   hadc2.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_RISING;
   hadc2.Init.DMAContinuousRequests = ENABLE;
